@@ -59,6 +59,7 @@ void SysTick_Handler(void);
 /* USER CODE BEGIN EFP */
 void CSI_IRQHandler(void);
 void DCMIPP_IRQHandler(void);
+void NPU3_IRQHandler(void);
 /* USER CODE END EFP */
 
 #ifdef __cplusplus

@@ -38,14 +38,18 @@ ENTRY(Reset_Handler)
 _estack = ORIGIN(RAM) + LENGTH(RAM); /* end of "RAM" Ram type memory */
 _sstack = _estack - _Min_Stack_Size;
 
-_Min_Heap_Size = 0x200; /* required amount of heap */
-_Min_Stack_Size = 0x800; /* required amount of stack */
+_Min_Heap_Size = 0x2000; /* required amount of heap */
+_Min_Stack_Size = 0x4000; /* required amount of stack */
 
 /* Memories definition */
 MEMORY
 {
   ROM    (xrw)    : ORIGIN = 0x34180400,   LENGTH = 255K
   RAM    (xrw)    : ORIGIN = 0x341C0000,   LENGTH = 256K
+  
+  /* THÊM 2 DÒNG NÀY VÀO */
+  AXISRAM    (xrw)    : ORIGIN = 0x34200000,   LENGTH = 3M   /* Vùng RAM chung cho Camera và NPU */
+  XSPI_FLASH (rx)     : ORIGIN = 0x70000000,   LENGTH = 64M  /* Flash ngoài chứa Model AI */
 }
 
 /* Sections */
@@ -200,4 +204,22 @@ SECTIONS
   }
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
+  
+  /* 1. Ép NPU Buffers vào AXI SRAM */
+  .axisram (NOLOAD) :
+  {
+    . = ALIGN(32);
+    *(.axisram)      /* Nhận dữ liệu từ __attribute__((section(".axisram"))) */
+    *(.axisram*)
+    . = ALIGN(32);
+  } >AXISRAM
+
+  /* 2. Ép Trọng số AI (Weights) vào Flash ngoài */
+  .ExtFlashSection :
+  {
+    . = ALIGN(32);
+    *(.ExtFlashSection) /* Nhận Model AI nếu được ép vào đây */
+    *(.ExtFlashSection*)
+    . = ALIGN(32);
+  } >XSPI_FLASH
 }

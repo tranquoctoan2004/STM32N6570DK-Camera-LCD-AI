@@ -68,7 +68,7 @@ typedef funcptr funcptr_NS;
 #define FRAME_WIDTH  800
 #define FRAME_HEIGHT 480
 #define FRAME_BUFFER_SIZE (FRAME_WIDTH * FRAME_HEIGHT*2)
-#define BUFFER_ADDRESS  0x34200000
+#define BUFFER_ADDRESS  0x34400000 // changed 20/03 0x34200000
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/

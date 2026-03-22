@@ -24,6 +24,7 @@
 #include "isp_api.h"
 #include "imx335_E27_isp_param_conf.h"
 #include "app_x-cube-ai.h"
+#include "stm32n6570_discovery_xspi.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -75,7 +76,53 @@ static ISP_StatusTypeDef GetSensorExposureHelper(uint32_t Instance, int32_t *Exp
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static void MPU_Config(void)
+{
+  MPU_Attributes_InitTypeDef   attr;
+  MPU_Region_InitTypeDef       region;
 
+  /* Tắt MPU để cài đặt */
+  HAL_MPU_Disable();
+
+  /* ---------------------------------------------------------------------- */
+  /* VÙNG 1: AXISRAM (0x34200000) - Chứa Input/Output ảnh                  */
+  /* Tính chất: Non-cacheable (để NPU và CPU không bị lệch dữ liệu)         */
+  /* ---------------------------------------------------------------------- */
+  attr.Number     = MPU_ATTRIBUTES_NUMBER0;
+  attr.Attributes = 0x44; /* Normal memory, Non-Cacheable */
+  HAL_MPU_ConfigMemoryAttributes(&attr);
+
+  region.Enable           = MPU_REGION_ENABLE;
+  region.Number           = MPU_REGION_NUMBER0;
+  region.BaseAddress      = 0x34200000;
+  region.LimitAddress     = 0x34200000 + (3 * 1024 * 1024) - 1; /* 3 Megabytes */
+  region.AttributesIndex  = MPU_ATTRIBUTES_NUMBER0;
+  region.AccessPermission = MPU_REGION_ALL_RW; /* Cấp quyền Read/Write cho tất cả */
+  region.DisableExec      = MPU_INSTRUCTION_ACCESS_ENABLE;
+  region.IsShareable      = MPU_ACCESS_OUTER_SHAREABLE; /* RẤT QUAN TRỌNG: Chia sẻ cho NPU */
+  HAL_MPU_ConfigRegion(&region);
+
+  /* ---------------------------------------------------------------------- */
+  /* VÙNG 2: XSPI FLASH (0x70000000) - Chứa Trọng số (Weights) mô hình AI   */
+  /* Tính chất: Cacheable (để đọc cực nhanh), Read-Only                     */
+  /* ---------------------------------------------------------------------- */
+  attr.Number     = MPU_ATTRIBUTES_NUMBER1;
+  attr.Attributes = 0xAA; /* Normal memory, Write-Through Cache */
+  HAL_MPU_ConfigMemoryAttributes(&attr);
+
+  region.Enable           = MPU_REGION_ENABLE;
+  region.Number           = MPU_REGION_NUMBER1;
+  region.BaseAddress      = 0x70000000;
+  region.LimitAddress     = 0x73FFFFFF; /* 64 Megabytes */
+  region.AttributesIndex  = MPU_ATTRIBUTES_NUMBER1;
+  region.AccessPermission = MPU_REGION_ALL_RO; /* Cấp quyền Read-Only cho tất cả */
+  region.DisableExec      = MPU_INSTRUCTION_ACCESS_ENABLE;
+  region.IsShareable      = MPU_ACCESS_OUTER_SHAREABLE; /* RẤT QUAN TRỌNG: Chia sẻ cho NPU */
+  HAL_MPU_ConfigRegion(&region);
+
+  /* Bật lại MPU */
+  HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+}
 /* USER CODE END 0 */
 
 /**
@@ -89,6 +136,9 @@ int main(void)
   ISP_AppliHelpersTypeDef appliHelpers = {0};
   /* USER CODE END 1 */
 
+  /* GỌI HÀM CẤU HÌNH BỘ BẢO VỆ BỘ NHỚ Ở ĐÂY */
+  MPU_Config();
+
   /* Enable the CPU Cache */
 
   /* Enable I-Cache---------------------------------------------------------*/
@@ -101,7 +151,12 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  MX_X_CUBE_AI_Init();
+
+  // changed 20/03
+  /* Ép Bảng Vector Ngắt trỏ về vùng RAM của project FSBL */
+    SCB->VTOR = 0x34000000;
+    /* Giữ cho mạch nạp ST-LINK không bị mất kết nối khi CPU gọi __WFE() */
+      HAL_DBGMCU_EnableDBGSleepMode();
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -138,7 +193,19 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
   LCD_Init(FRAME_WIDTH, FRAME_HEIGHT);
+  BSP_XSPI_NOR_Init_t xspi_init;
+  xspi_init.InterfaceMode = BSP_XSPI_NOR_OPI_MODE;
+  xspi_init.TransferRate  = BSP_XSPI_NOR_DTR_TRANSFER;
 
+  // Khởi tạo và bật chế độ đọc như RAM (Memory Mapped)
+  if (BSP_XSPI_NOR_Init(0, &xspi_init) != BSP_ERROR_NONE) {
+     Error_Handler();
+  }
+  if (BSP_XSPI_NOR_EnableMemoryMappedMode(0) != BSP_ERROR_NONE) {
+     Error_Handler();
+  }
+
+  MX_X_CUBE_AI_Init();
   /* Fill init struct with Camera driver helpers */
   appliHelpers.GetSensorInfo = GetSensorInfoHelper;
   appliHelpers.SetSensorGain = SetSensorGainHelper;
@@ -162,8 +229,15 @@ int main(void)
   {
     Error_Handler();
   }
-  /* USER CODE END 2 */
+  /* --- BẬT NGẮT CHO BỘ TĂNG TỐC AI (ATON NPU) --- */
+  /* Bật xung nhịp cho NPU */
+  __HAL_RCC_NPU_CLK_ENABLE();
+  /* --- BẬT TOÀN BỘ NGẮT CHO NPU --- */
+    HAL_NVIC_SetPriority(NPU0_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(NPU0_IRQn);
 
+  /* USER CODE END 2 */
+  BSP_LED_Toggle(LED_GREEN);
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)

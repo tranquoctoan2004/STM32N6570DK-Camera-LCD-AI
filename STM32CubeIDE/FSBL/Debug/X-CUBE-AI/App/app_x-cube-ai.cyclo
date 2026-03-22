@@ -1,6 +1,0 @@
-C:/Users/toantran/Documents/Project_STM32_N6570/STM32CubeN6-main/Projects/STM32N6570-DK/Applications/DCMIPP/DCMIPP_ContinuousMode/STM32CubeIDE/FSBL/Middlewares/ST/AI/Npu/ll_aton/ll_aton_rt_user_api.h:263:42:LL_ATON_Set_User_Input_Buffer	3
-C:/Users/toantran/Documents/Project_STM32_N6570/STM32CubeN6-main/Projects/STM32N6570-DK/Applications/DCMIPP/DCMIPP_ContinuousMode/STM32CubeIDE/FSBL/Middlewares/ST/AI/Npu/ll_aton/ll_aton_rt_user_api.h:276:42:LL_ATON_Set_User_Output_Buffer	3
-../X-CUBE-AI/App/app_x-cube-ai.c:37:6:MX_X_CUBE_AI_Init	1
-../X-CUBE-AI/App/app_x-cube-ai.c:69:6:MX_X_CUBE_AI_Process	6
-../X-CUBE-AI/App/app_x-cube-ai.c:115:13:camera_to_ai	3
-../X-CUBE-AI/App/app_x-cube-ai.c:144:13:display_result	2

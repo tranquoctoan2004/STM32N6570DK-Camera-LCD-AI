@@ -22,6 +22,7 @@
 #include "stm32n6xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "app_x-cube-ai.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
